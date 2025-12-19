@@ -82,15 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
         bgMusic.muted = false;
         bgMusic.volume = 1.0;
 
-        // Check buffer status
-        if (bgMusic.readyState < 3) { // 3 = HAVE_FUTURE_DATA
-            alert("正在缓冲音乐(文件较大)，请稍候...");
-            bgMusic.addEventListener('canplay', () => {
-                bgMusic.play().then(() => {
-                    // console.log("Delayed play success");
-                }).catch(e => alert("缓冲后播放失败: " + e));
-            }, { once: true });
-        }
+
 
         const playPromise = bgMusic.play();
         if (playPromise !== undefined) {
