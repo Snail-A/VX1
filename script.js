@@ -10,7 +10,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // Detect WeChat browser
     const isWeChat = /MicroMessenger/i.test(navigator.userAgent);
 
-    bgMusic.load();
+    // Aggressive preload strategy
+    const forceLoad = () => {
+        bgMusic.load();
+        // For WeChat: try to play and pause immediately to trigger buffering
+        if (isWeChat) {
+            const p = bgMusic.play();
+            if (p !== undefined) {
+                p.then(() => {
+                    bgMusic.pause();
+                    console.log("WeChat: Audio primed");
+                }).catch(() => { });
+            }
+        }
+    };
 
     bgMusic.addEventListener('playing', () => {
         musicControl.classList.add('playing');
@@ -20,36 +33,52 @@ document.addEventListener('DOMContentLoaded', () => {
         musicControl.classList.remove('playing');
     });
 
+    // Try to load immediately
+    forceLoad();
+
     if (isWeChat) {
         if (typeof WeixinJSBridge !== 'undefined') {
             WeixinJSBridge.invoke('getNetworkType', {}, function (e) {
-                bgMusic.load();
+                forceLoad();
             });
         } else {
             document.addEventListener('WeixinJSBridgeReady', function () {
-                bgMusic.load();
+                forceLoad();
             }, false);
         }
     }
 
+    // Add buffering feedback
+    bgMusic.addEventListener('waiting', () => {
+        if (isOpened) {
+            // Simple toast or console log, for now just log
+            // In a real app we would show a spinner
+            console.log("Buffering...");
+        }
+    });
+
     const interactHandler = (e) => {
-        e.preventDefault();
+        // Prevent default but ensure we don't block scrolling if needed
+        // e.preventDefault(); 
+
+        // Improve load timing: start loading on touch start
+        bgMusic.load();
+
+        if (e.type === 'touchstart') return; // Just load on touchstart
+
+        e.preventDefault(); // Prevent default on click/touchend
 
         if (isOpened) return;
         isOpened = true;
 
         // CRITICAL: Always try to play IMMEDIATELY on interaction
-        // Do not wait for load, do not check readyState
-        // Browser needs synchronous call to allow playback
         bgMusic.muted = false;
         bgMusic.volume = 1.0;
 
-        // Force play immediately. Browser will handle buffering if not loaded.
         const playPromise = bgMusic.play();
         if (playPromise !== undefined) {
             playPromise.catch(error => {
                 console.log("Auto-play prevented: " + error);
-                // Fallback: Add one-time click listener to body just in case
                 document.body.addEventListener('click', () => {
                     bgMusic.play();
                 }, { once: true });
@@ -59,8 +88,11 @@ document.addEventListener('DOMContentLoaded', () => {
         openLetter();
     };
 
+    // Use click for desktop and touchend for mobile
     openBtn.addEventListener('click', interactHandler);
-    openBtn.addEventListener('touchend', interactHandler);
+    // Add touchstart for early loading
+    openBtn.addEventListener('touchstart', interactHandler, { passive: true });
+    // Remove touchend to avoid double firing with click (click fires after touchend)
 
     musicControl.addEventListener('click', (e) => {
         e.stopPropagation();
