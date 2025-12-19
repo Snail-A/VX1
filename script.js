@@ -33,8 +33,16 @@ document.addEventListener('DOMContentLoaded', () => {
         musicControl.classList.remove('playing');
     });
 
+    // DEBUG ALERTS - REMOVE AFTER FIXING
+    // alert("脚本已加载 v5.1 - 准备测试");
+
     // Try to load immediately
     forceLoad();
+
+    bgMusic.addEventListener('error', (e) => {
+        const err = bgMusic.error;
+        alert("音频加载错误: " + err.code + "\n" + err.message);
+    });
 
     if (isWeChat) {
         if (typeof WeixinJSBridge !== 'undefined') {
@@ -77,8 +85,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const playPromise = bgMusic.play();
         if (playPromise !== undefined) {
-            playPromise.catch(error => {
+            playPromise.then(() => {
+                // alert("播放成功！");
+            }).catch(error => {
                 console.log("Auto-play prevented: " + error);
+                alert("自动播放被拦截: " + error);
                 document.body.addEventListener('click', () => {
                     bgMusic.play();
                 }, { once: true });
