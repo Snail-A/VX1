@@ -79,20 +79,31 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isOpened) return;
         isOpened = true;
 
-        // CRITICAL: Always try to play IMMEDIATELY on interaction
         bgMusic.muted = false;
         bgMusic.volume = 1.0;
+
+        // Check buffer status
+        if (bgMusic.readyState < 3) { // 3 = HAVE_FUTURE_DATA
+            alert("正在缓冲音乐(文件较大)，请稍候...");
+            bgMusic.addEventListener('canplay', () => {
+                bgMusic.play().then(() => {
+                    // console.log("Delayed play success");
+                }).catch(e => alert("缓冲后播放失败: " + e));
+            }, { once: true });
+        }
 
         const playPromise = bgMusic.play();
         if (playPromise !== undefined) {
             playPromise.then(() => {
-                // alert("播放成功！");
+                // Play started (or pending buffering)
             }).catch(error => {
-                console.log("Auto-play prevented: " + error);
-                alert("自动播放被拦截: " + error);
-                document.body.addEventListener('click', () => {
-                    bgMusic.play();
-                }, { once: true });
+                // If it's not an abort error (which happens when we load() again), alert it
+                if (error.name !== 'AbortError') {
+                    alert("播放受阻: " + error);
+                    document.body.addEventListener('click', () => {
+                        bgMusic.play();
+                    }, { once: true });
+                }
             });
         }
 
